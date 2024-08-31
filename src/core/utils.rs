@@ -10,6 +10,7 @@ use teloxide::{
 };
 use tokio::time::sleep;
 
+#[derive(Debug)]
 pub struct PostData {
     pub content: Vec<String>,
     pub tags: Vec<String>,
@@ -34,19 +35,22 @@ impl Utils {
         let user_rule = Db::fetch_all_user(pool, &Services::Rule34).await;
         let user_gelbooru = Db::fetch_all_user(pool, &Services::Gelbooru).await;
         let user_kemono = Db::fetch_all_user(pool, &Services::Kemono).await;
+        let user_pixiv = Db::fetch_all_user(pool, &Services::Pixiv).await;
         let rule34 = user_rule.iter().find(|x| x.user_id == chat_id);
         let gelbooru = user_gelbooru.iter().find(|x| x.user_id == chat_id);
         let kemono = user_kemono.iter().find(|x| x.user_id == chat_id);
+        let pixiv = user_pixiv.iter().find(|x| x.user_id == chat_id);
 
         let chatid = ChatId(chat_id);
 
-        if rule34.is_none() || gelbooru.is_none() || kemono.is_none() {
+        if rule34.is_none() || gelbooru.is_none() || kemono.is_none() || pixiv.is_none() {
             return bot.send_message(chatid, "empty").await;
         }
 
         let rule34 = rule34.unwrap();
         let gelbooru = gelbooru.unwrap();
         let kemono = kemono.unwrap();
+        let pixiv = pixiv.unwrap();
 
         let rule34_tags = serde_json::from_str::<Vec<String>>(&rule34.tags)
             .unwrap_or_default()
@@ -64,9 +68,13 @@ impl Utils {
             .unwrap_or_default()
             .join("\n");
 
+        let pixiv_tags = serde_json::from_str::<Vec<String>>(&pixiv.tags)
+            .unwrap_or_default()
+            .join("\n");
+
         let message = format!(
-            "-----Rule34 Tag-----\n{}\n-----Rule34 Anti tag-----\n{}\n -----Gelbooru Tag-----\n{}\n-----Gelbooru Anti tag-----\n{}\n-----Kemono Tag-----\n{}\n",
-            rule34_tags, rule34_antitags, gelbooru_tags, gelbooru_antitags, kemono_tags
+            "-----Rule34 Tag-----\n{}\n-----Rule34 Anti tag-----\n{}\n -----Gelbooru Tag-----\n{}\n-----Gelbooru Anti tag-----\n{}\n-----Kemono Tag-----\n{}\n-----pixiv Tag-----\n{}\n",
+            rule34_tags, rule34_antitags, gelbooru_tags, gelbooru_antitags, kemono_tags, pixiv_tags
         );
 
         bot.send_message(chatid, message).await

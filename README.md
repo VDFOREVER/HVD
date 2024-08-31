@@ -1,5 +1,5 @@
 <h1 align="center" style="font-weight: 900; font-size: 30px;" >About</h1>
-Telegram bot for tracking new posts by tags with rule34 gelbooru, kemono, with the ability to filter
+Telegram bot for tracking new posts by tags for rule34 gelbooru, kemono, pixiv, with the ability to filter
 
 <h1 align="center" style="font-weight: 900; font-size: 30px;" >Settings</h1>
 

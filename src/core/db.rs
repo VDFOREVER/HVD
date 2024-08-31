@@ -2,6 +2,7 @@ use super::{
     service::{gelbooru::Gelbooru, kemono::Kemono, rule34::Rule34},
     utils::Utils,
 };
+use crate::core::utils::PostData;
 use log::info;
 use sqlx::{migrate::MigrateDatabase, Pool, Sqlite, SqlitePool};
 use tokio::time::sleep;
@@ -23,6 +24,7 @@ pub enum Services {
     Rule34,
     Gelbooru,
     Kemono,
+    Pixiv,
 }
 
 impl Db {
@@ -40,6 +42,7 @@ impl Db {
         sqlx::query("CREATE TABLE IF NOT EXISTS rule34 (id INTEGER PRIMARY KEY, user_id INTEGER, tags TEXT, antitags TEXT, history TEXT);").execute(&db).await.expect("Error create table");
         sqlx::query("CREATE TABLE IF NOT EXISTS gelbooru (id INTEGER PRIMARY KEY, user_id INTEGER, tags TEXT, antitags TEXT, history TEXT);").execute(&db).await.expect("Error create table");
         sqlx::query("CREATE TABLE IF NOT EXISTS kemono (id INTEGER PRIMARY KEY, user_id INTEGER, tags TEXT, antitags TEXT, history TEXT);").execute(&db).await.expect("Error create table");
+        sqlx::query("CREATE TABLE IF NOT EXISTS pixiv (id INTEGER PRIMARY KEY, user_id INTEGER, tags TEXT, antitags TEXT, history TEXT);").execute(&db).await.expect("Error create table");
 
         Ok(db)
     }
@@ -49,6 +52,7 @@ impl Db {
             Services::Gelbooru => "gelbooru",
             Services::Rule34 => "rule34",
             Services::Kemono => "kemono",
+            Services::Pixiv => "pixiv",
         }
     }
 
@@ -57,6 +61,7 @@ impl Db {
             "gelbooru" => Services::Gelbooru,
             "rule34" => Services::Rule34,
             "kemono" => Services::Kemono,
+            "pixiv" => Services::Pixiv,
             _ => Services::Rule34,
         }
     }
@@ -165,6 +170,10 @@ impl Db {
             Services::Rule34 => Rule34::pasrse(tag).await,
             Services::Gelbooru => Gelbooru::pasrse(tag).await,
             Services::Kemono => Kemono::pasrse(tag).await,
+            Services::Pixiv => Ok(vec![PostData {
+                content: vec![],
+                tags: vec![],
+            }]),
         };
 
         let posts = match posts {

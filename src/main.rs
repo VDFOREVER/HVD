@@ -4,7 +4,7 @@ use std::{env::var, process::exit};
 use teloxide::{prelude::*, utils::command::BotCommands};
 use tg_bot::core::{
     db::{Db, Services},
-    service::{gelbooru::Gelbooru, kemono::Kemono, rule34::Rule34},
+    service::{gelbooru::Gelbooru, kemono::Kemono, pixiv::Pixiv, rule34::Rule34},
     utils::Utils,
 };
 use tokio::time::sleep;
@@ -13,6 +13,8 @@ use tokio::time::sleep;
 async fn main() -> std::io::Result<()> {
     simple_logger::init_with_level(log::Level::Info).unwrap();
     dotenv::from_path(".env").expect("error loading env");
+
+    let pixiv_login = Pixiv::login().await.unwrap();
 
     let bot = Bot::from_env();
     let bot_clone = bot.clone();
@@ -25,8 +27,14 @@ async fn main() -> std::io::Result<()> {
     let handle = tokio::spawn(async move {
         loop {
             let pool = Db::open().await.unwrap();
+            pixiv_login.refresh().await.unwrap();
 
-            for service in [Services::Rule34, Services::Gelbooru, Services::Kemono] {
+            for service in [
+                Services::Rule34,
+                Services::Gelbooru,
+                Services::Kemono,
+                Services::Pixiv,
+            ] {
                 info!("Start {:?}", service);
 
                 let user_results = Db::fetch_all_user(&pool, &service).await;
@@ -37,6 +45,9 @@ async fn main() -> std::io::Result<()> {
                         Services::Rule34 => Rule34::pasrse(&repeat_tag).await,
                         Services::Gelbooru => Gelbooru::pasrse(&repeat_tag).await,
                         Services::Kemono => Kemono::pasrse(&repeat_tag).await,
+                        Services::Pixiv => {
+                            Pixiv::pasrse(&repeat_tag, pixiv_login.access_token.clone()).await
+                        }
                     };
 
                     let post = match post {
@@ -146,6 +157,7 @@ service:
     rule34
     gelbooru
     kemono
+    pixiv
 ";
 
 async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
@@ -213,6 +225,7 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
                 Db::create_user_is_not_exitst(&pool, user_id, &Services::Rule34).await?;
                 Db::create_user_is_not_exitst(&pool, user_id, &Services::Gelbooru).await?;
                 Db::create_user_is_not_exitst(&pool, user_id, &Services::Kemono).await?;
+                Db::create_user_is_not_exitst(&pool, user_id, &Services::Pixiv).await?;
 
                 bot.send_message(msg.chat.id, "Add User".to_string())
                     .await?
@@ -231,6 +244,7 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
                 Db::remove_user(&pool, user_id, &Services::Rule34).await?;
                 Db::remove_user(&pool, user_id, &Services::Gelbooru).await?;
                 Db::remove_user(&pool, user_id, &Services::Kemono).await?;
+                Db::remove_user(&pool, user_id, &Services::Pixiv).await?;
 
                 bot.send_message(msg.chat.id, "Remove User".to_string())
                     .await?
