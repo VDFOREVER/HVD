@@ -1,6 +1,6 @@
 use log::{error, info};
 use sqlx::{Pool, Sqlite};
-use std::{env::var, process::exit};
+use std::{env::var, path::Path, process::exit};
 use teloxide::{prelude::*, utils::command::BotCommands};
 use tg_bot::core::{
     db::{Db, Services},
@@ -14,8 +14,6 @@ async fn main() -> std::io::Result<()> {
     simple_logger::init_with_level(log::Level::Info).unwrap();
     dotenv::from_path(".env").expect("error loading env");
 
-    let mut pixiv_login = Pixiv::login().await.unwrap();
-
     let bot = Bot::from_env();
     let bot_clone = bot.clone();
 
@@ -27,7 +25,11 @@ async fn main() -> std::io::Result<()> {
     let handle = tokio::spawn(async move {
         loop {
             let pool = Db::open().await.unwrap();
-            pixiv_login = pixiv_login.refresh().await.unwrap();
+            let pixiv_login = if !Path::new("tmp").exists() {
+                Pixiv::login().await.unwrap()
+            } else {
+                Pixiv::refresh().await.unwrap()
+            };
 
             for service in [
                 Services::Rule34,

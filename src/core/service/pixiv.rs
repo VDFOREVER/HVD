@@ -4,12 +4,10 @@ use reqwest::{header::HeaderMap, Client};
 use serde::Deserialize;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
-use std::collections::HashMap;
-use std::io;
+use std::{collections::HashMap, fs, io};
 
 pub struct Pixiv {
     pub access_token: String,
-    pub refresh_token: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -45,7 +43,6 @@ const LOGIN_URL: &str = "https://app-api.pixiv.net/web/v1/login";
 const CLIENT_ID: &str = "MOBrBDS8blbauoSck0ZfDbtuzpyT";
 const CLIENT_SECRET: &str = "lsACyCD94FhDUtGTXi3QzcFE2uU1hqtDaKeqrdwj";
 const AUTH_TOKEN_URL: &str = "https://oauth.secure.pixiv.net/auth/token";
-
 const PIXIV: &str = "https://app-api.pixiv.net/v1/user/illusts?&type=illust&offset=0&user_id=";
 
 impl Pixiv {
@@ -80,19 +77,17 @@ impl Pixiv {
             .await?;
 
         let (access_token, refresh_token) = Self::token_extract(res);
+        Self::save_refresh_token(refresh_token);
 
-        Ok(Self {
-            access_token,
-            refresh_token,
-        })
+        Ok(Self { access_token })
     }
 
-    pub async fn refresh(&self) -> Result<Self, Box<reqwest::Error>> {
+    pub async fn refresh() -> Result<Self, Box<reqwest::Error>> {
         let mut form = Self::form();
         form.insert("grant_type".into(), "refresh_token".into());
         form.insert(
             "refresh_token".into(),
-            self.refresh_token.trim_end_matches('\n').into(),
+            Self::read_refresh_token().trim_end_matches('\n').into(),
         );
 
         let res = Client::new()
@@ -105,11 +100,9 @@ impl Pixiv {
             .await?;
 
         let (access_token, refresh_token) = Self::token_extract(res);
+        Self::save_refresh_token(refresh_token);
 
-        Ok(Self {
-            access_token,
-            refresh_token,
-        })
+        Ok(Self { access_token })
     }
 
     pub async fn pasrse(tag: &String, token: String) -> Result<Vec<PostData>, String> {
@@ -211,5 +204,13 @@ impl Pixiv {
             .to_string();
 
         (access_token, refresh_token)
+    }
+
+    fn save_refresh_token(token: String) {
+        fs::write("tmp", token).expect("Unable to write file")
+    }
+
+    fn read_refresh_token() -> String {
+        fs::read_to_string("tmp").expect("Unable to read file")
     }
 }
